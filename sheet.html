@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#2a1c64">
+<canvas id="c" width="1000" height="560"></canvas>
+<script src="characters.js"></script>
+<script>
+const c=document.getElementById('c').getContext('2d');
+const A=CH.makeRig('hikari'),B=CH.makeRig('kage');
+let t=0;
+function f(){t+=1/60;
+ c.fillStyle='#2a1c64';c.fillRect(0,0,1000,560);
+ const ang=Math.sin(t)*0.6;
+ CH.updateRig(A,1/60,Math.cos(t)*120,0,1,4);CH.updateRig(B,1/60,0,0,-1,4);
+ CH.drawChar(c,A,250,500,4,{aim:ang,speed:0.3,t});
+ CH.drawChar(c,B,720,500,4,{aim:Math.PI-ang,t});
+ CH.drawChar(c,A,900,200,1,{aim:ang,speed:1,t});
+ CH.drawChar(c,B,900,330,1,{aim:Math.PI-ang,speed:1,t});
+ requestAnimationFrame(f)}
+f();
+</script>

@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SHADOW SYNC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Kanit:ital,wght@0,500;1,700;1,800&family=Prompt:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#120c2b; --ink2:#1b1243; --ink3:#271a5e; --paper:#f6f1ff; --cyan:#38e1ff; --pink:#ff5fa2; --red:#ff2d55; --violet:#8b5cff; --gold:#ffd65a; --mute:#bdb1ee;
+  --disp:'Dela Gothic One','Kanit','Leelawadee UI',sans-serif;
+  --head:'Kanit','Leelawadee UI','Tahoma',sans-serif;
+  --body:'Prompt','Leelawadee UI','Tahoma',sans-serif;
+  --mono:'Cascadia Mono','Consolas','Courier New',monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#06031a;overflow:hidden;font-family:var(--body);color:var(--paper)}
+#deck{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform:translate(-50%,-50%);transform-origin:center;overflow:hidden;background:#0b0630;opacity:0;transition:opacity .4s ease}
+html.ready #deck{opacity:1}
+#bgfx{position:absolute;inset:0;pointer-events:none}
+#bgfx .sky{position:absolute;inset:0;background:linear-gradient(180deg,#0a0630 0%,#1d0f55 45%,#5b1f80 78%,#c23d87 100%)}
+#bgfx .moon{position:absolute;right:-60px;top:-70px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle at 38% 36%,#fff4fb,#ffc6e6 55%,#ff9fd0);opacity:.22;box-shadow:0 0 120px rgba(255,160,215,.5)}
+#bgfx .dots{position:absolute;inset:0;background:radial-gradient(rgba(255,255,255,.07) 1.4px,transparent 1.9px) 0 0/9px 9px}
+#petals{position:absolute;inset:0;width:100%;height:100%}
+
+.slide{position:absolute;inset:0;display:none}
+.slide.active{display:block}
+.ttl{position:absolute;left:64px;top:40px;margin:0;font-family:var(--head);font-style:italic;font-weight:800;font-size:54px;line-height:1.12;letter-spacing:.005em;color:var(--paper);text-shadow:4px 4px 0 var(--pink),0 0 24px rgba(255,95,162,.35);transform:skewX(-4deg)}
+.ttl small{display:block;font-family:var(--body);font-style:normal;font-weight:500;font-size:20px;color:var(--mute);text-shadow:none;margin-top:6px;letter-spacing:0}
+
+/* manga panel */
+.pn{position:absolute;--cp:polygon(0 0,100% 0,100% 100%,0 100%);--bd:var(--paper);--bg:var(--ink2)}
+.pn::before{content:"";position:absolute;inset:0;background:var(--bd);clip-path:var(--cp)}
+.pn::after{content:"";position:absolute;inset:4px;background:var(--bg);clip-path:var(--cp)}
+.pn>.in{position:relative;z-index:1;height:100%;padding:22px 24px}
+.cpA{--cp:polygon(0 0,100% 2.5%,98% 100%,0 96%)}
+.cpB{--cp:polygon(2% 0,100% 0,100% 97%,0 100%)}
+.cpC{--cp:polygon(0 3%,98% 0,100% 100%,2% 98%)}
+.cpD{--cp:polygon(0 0,97% 0,100% 100%,3% 100%)}
+.cpE{--cp:polygon(3% 0,100% 0,97% 100%,0 100%)}
+.pn.cy{--bd:var(--cyan)} .pn.rd{--bd:var(--red)} .pn.pk{--bd:var(--pink)} .pn.vi{--bd:var(--violet)} .pn.gd{--bd:var(--gold)}
+.pn.ink{--bg:#0e0828}
+.pn.ht .in::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(rgba(255,255,255,.08) 1.4px,transparent 1.9px) 0 0/8px 8px;pointer-events:none}
+h3{margin:0 0 8px;font-family:var(--head);font-style:italic;font-weight:700;font-size:28px;line-height:1.15}
+p{margin:0;font-size:19px;line-height:1.55;color:#e6defc}
+.mute{color:var(--mute)}
+.kbd{display:inline-block;font-family:var(--disp);background:var(--paper);color:var(--ink);padding:6px 14px;border-radius:7px;box-shadow:0 4px 0 #9f93d6;font-size:24px}
+.chip{display:inline-block;padding:7px 16px;border:2px solid var(--paper);background:rgba(18,12,43,.7);font-size:18px;font-weight:500;transform:skewX(-10deg);margin:0 10px 12px 0}
+.chip span{display:inline-block;transform:skewX(10deg)}
+ul.pts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+ul.pts li{position:relative;padding-left:24px;font-size:18.5px;line-height:1.45;color:#e6defc}
+ul.pts li::before{content:"";position:absolute;left:2px;top:.55em;width:9px;height:9px;background:var(--c,var(--pink));transform:rotate(45deg)}
+.en{font-family:var(--disp)}
+
+/* entrance: panels are "drawn" one by one */
+.slide.active .rv{animation:draw .6s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i,0)*80ms + 140ms)}
+@keyframes draw{from{clip-path:polygon(0 0,0 0,-26% 100%,-26% 100%);opacity:.2;transform:translateX(-14px)}to{clip-path:polygon(0 0,100% 0,100% 100%,0 100%);opacity:1;transform:none}}
+
+/* slash wipe between slides */
+#wipe{position:absolute;inset:0;pointer-events:none;z-index:60;overflow:hidden}
+#wipe .b{position:absolute;top:-12%;bottom:-12%;left:-45%;width:190%;transform:skewX(-18deg) translateX(-112%);display:none}
+#wipe .b0{background:#fff}#wipe .b1{background:var(--pink)}#wipe .b2{background:var(--ink)}
+#wipe.fwd .b,#wipe.back .b{display:block}
+#wipe.fwd .b{animation:sw .62s cubic-bezier(.65,.05,.35,1) both}
+#wipe.back .b{animation:swr .62s cubic-bezier(.65,.05,.35,1) both}
+#wipe .b0{animation-delay:0s!important}#wipe .b1{animation-delay:.04s!important}#wipe .b2{animation-delay:.09s!important}
+@keyframes sw{from{transform:skewX(-18deg) translateX(-112%)}to{transform:skewX(-18deg) translateX(112%)}}
+@keyframes swr{from{transform:skewX(-18deg) translateX(112%)}to{transform:skewX(-18deg) translateX(-112%)}}
+#sfx{position:absolute;left:0;right:0;top:268px;text-align:center;font-family:var(--disp);font-size:150px;color:#fff;-webkit-text-stroke:5px var(--ink);paint-order:stroke fill;text-shadow:0 8px 0 var(--ink);opacity:0;z-index:61;pointer-events:none;transform:skewX(-8deg)}
+#sfx.go{animation:sfx .62s ease both}
+@keyframes sfx{0%{opacity:0;transform:skewX(-8deg) scale(2)}40%{opacity:1;transform:skewX(-8deg) scale(1)}70%{opacity:1}100%{opacity:0;transform:skewX(-8deg) scale(.95)}}
+
+/* chrome */
+#pg{position:absolute;right:30px;bottom:18px;z-index:40;font-family:var(--disp);font-size:16px;color:var(--paper);text-shadow:0 2px 0 var(--ink);display:flex;gap:10px;align-items:center}
+#pg b{font-size:26px}
+#ticks{position:absolute;left:64px;bottom:22px;z-index:40;display:flex;gap:7px}
+#ticks button{all:unset;cursor:pointer;width:15px;height:15px;transform:rotate(45deg);border:2px solid rgba(246,241,255,.55);background:transparent;transition:.2s}
+#ticks button.on{background:var(--pink);border-color:var(--paper);box-shadow:0 0 12px var(--pink)}
+#ticks button:hover{border-color:#fff}
+#ticks button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.nav{position:absolute;top:0;bottom:0;width:70px;z-index:35;all:unset;cursor:pointer;opacity:0;transition:opacity .2s}
+.nav:hover,.nav:focus-visible{opacity:1}
+.nav.l{left:0}.nav.r{right:0}
+.nav i{position:absolute;top:50%;width:46px;height:46px;margin-top:-23px;display:grid;place-items:center;background:rgba(18,12,43,.8);border:2px solid var(--paper);transform:rotate(45deg);font-style:normal}
+.nav.l i{left:12px}.nav.r i{right:12px}
+.nav i span{transform:rotate(-45deg);font-family:var(--disp);font-size:18px}
+
+/* ---------- slide specifics ---------- */
+canvas.cc{position:absolute;pointer-events:none}
+
+/* S1 cover */
+.s1 .rays{position:absolute;inset:0;background:repeating-conic-gradient(from 0deg at 50% 62%,rgba(255,255,255,.16) 0 1deg,transparent 1deg 5.5deg);-webkit-mask-image:radial-gradient(circle at 50% 62%,transparent 14%,#000 78%);mask-image:radial-gradient(circle at 50% 62%,transparent 14%,#000 78%);animation:spin 40s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.s1 h1{position:absolute;left:0;right:0;top:84px;margin:0;text-align:center;font-family:var(--disp);font-size:128px;line-height:.94;transform:skewX(-8deg);background:linear-gradient(180deg,#fff 0 36%,#a6f0ff 52%,#ff9ec9 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:5px var(--ink);paint-order:stroke fill;filter:drop-shadow(0 10px 0 #120c2b) drop-shadow(0 0 34px rgba(255,95,162,.6))}
+.s1 .jp{position:absolute;left:0;right:0;top:362px;text-align:center;font-family:var(--disp);font-size:26px;letter-spacing:.7em;margin-left:.7em;color:#ffd3e6;text-shadow:0 0 18px rgba(255,95,162,.9)}
+.s1 .sub{position:absolute;left:0;right:0;top:416px;text-align:center;font-family:var(--head);font-style:italic;font-weight:700;font-size:30px;text-shadow:0 3px 0 var(--ink)}
+.s1 .hint{position:absolute;left:0;right:0;bottom:60px;text-align:center;font-size:18px;color:var(--mute)}
+.s1 .vsb{position:absolute;left:50%;top:540px;transform:translateX(-50%) skewX(-10deg);font-family:var(--disp);font-size:20px;padding:10px 26px;background:var(--paper);color:var(--ink);box-shadow:0 5px 0 var(--ink)}
+
+/* S2 */
+.s2 svg{width:84px;height:84px;margin-bottom:6px;display:block}
+.banner{position:absolute;display:flex;align-items:center;padding:0 40px;background:linear-gradient(100deg,var(--ink) 0 62%,#2b0d3d 100%);border-top:4px solid var(--pink);border-bottom:4px solid var(--pink);clip-path:polygon(0 0,100% 12%,100% 100%,0 88%)}
+.banner p{font-family:var(--head);font-style:italic;font-weight:700;font-size:29px;line-height:1.35;color:#fff}
+
+/* S3 cycle */
+.s3 .lead{position:absolute;left:64px;top:210px;width:560px}
+.s3 .lead p{font-size:23px;line-height:1.65}
+.cyc text{font-family:var(--head);font-style:italic;font-weight:700;font-size:22px;fill:var(--paper)}
+.cyc .nd{fill:var(--ink);stroke-width:3}
+.cyc .orb{animation:spin 22s linear infinite;transform-origin:260px 220px}
+
+/* S4 characters */
+.s4 .nm{font-family:var(--disp);font-size:34px;margin:0;line-height:1}
+.s4 .role{font-size:18px;font-weight:600;margin:4px 0 12px}
+.sw{display:flex;gap:8px;margin-top:14px}
+.sw i{display:block;width:34px;height:34px;border-radius:50%;border:3px solid var(--ink);box-shadow:0 0 0 2px var(--paper)}
+.sw+small{display:block;margin-top:6px;font-size:14px;color:var(--mute)}
+
+/* S5 */
+.s5 .kb{margin-bottom:16px;height:56px;display:flex;align-items:center}
+.stat{position:absolute;top:0;bottom:0;padding:18px 20px;text-align:left}
+.stat b{display:block;font-family:var(--disp);font-size:46px;line-height:1;color:var(--gold);text-shadow:0 3px 0 var(--ink)}
+.stat span{display:block;margin-top:8px;font-size:18px;color:#e6defc;line-height:1.4}
+
+/* S6 pipeline */
+.s6 .col h3{display:flex;align-items:baseline;gap:10px}
+.s6 .col h3 small{font-family:var(--disp);font-style:normal;font-size:12px;color:var(--cyan);letter-spacing:.06em}
+.s6 .arrow{position:absolute;top:366px;width:44px;height:6px;background:rgba(255,255,255,.2);overflow:hidden;border-radius:3px}
+.s6 .arrow::after{content:"";position:absolute;top:0;bottom:0;width:16px;background:linear-gradient(90deg,transparent,var(--pink),#fff);animation:pulse 1.4s linear infinite}
+@keyframes pulse{from{left:-18px}to{left:46px}}
+.s6 .arrow::before{content:"";position:absolute;right:-2px;top:-5px;border-left:10px solid rgba(255,255,255,.4);border-top:8px solid transparent;border-bottom:8px solid transparent}
+
+/* S7 hedge demo */
+.s7 canvas#hedge{position:absolute;left:0;top:0;width:100%;height:100%}
+.s7 .wr{display:grid;grid-template-columns:112px 1fr 48px;align-items:center;gap:10px;margin:6px 0;font-family:var(--mono);font-size:15px}
+.s7 .wr .t{height:14px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
+.s7 .wr .t i{display:block;height:100%;transform-origin:left;border-radius:99px}
+.s7 .wr.top{color:#fff;font-weight:700}
+.s7 .wr em{font-style:normal;text-align:right}
+.s7 .seg{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.s7 .seg button{all:unset;cursor:pointer;padding:6px 12px;font-size:15px;font-weight:600;border:2px solid rgba(246,241,255,.6);background:rgba(18,12,43,.6);transform:skewX(-10deg)}
+.s7 .seg button span{display:inline-block;transform:skewX(10deg)}
+.s7 .seg button.on{background:var(--pink);border-color:#fff}
+.s7 .seg button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.s7 .formula{font-family:var(--mono);font-size:19px;background:#0b0624;border-left:4px solid var(--gold);padding:10px 14px;margin:10px 0;color:#fff7c9}
+.s7 input[type=range]{width:100%;accent-color:#ff5fa2}
+.s7 label{font-size:16px;color:var(--mute);display:flex;justify-content:space-between}
+
+/* S8 cards */
+.atk svg{width:92px;height:92px;display:block;margin-bottom:8px}
+.atk .en{font-size:20px;margin-bottom:6px;display:block}
+.atk p{font-size:18px;line-height:1.5}
+.bars2{display:grid;grid-template-columns:120px 1fr 60px;gap:10px;align-items:center;font-family:var(--mono);font-size:15px;margin:5px 0}
+.bars2 .t{height:14px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
+.bars2 .t i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8b5cff,#ff5fa2)}
+.bars2.hi .t i{background:linear-gradient(90deg,#ff5fa2,#ffd65a)}
+.bars2.hi{color:#fff;font-weight:700}
+
+/* S9 compare */
+table.cmp{width:100%;border-collapse:collapse;font-size:18px}
+table.cmp th,table.cmp td{padding:9px 14px;text-align:left;border-bottom:1px solid rgba(255,255,255,.15);vertical-align:top}
+table.cmp th{font-family:var(--head);font-style:italic;font-weight:700;font-size:20px}
+table.cmp td:first-child{color:var(--mute);width:170px;font-weight:600}
+.on-c{color:#8df0ff}.off-c{color:#ffb0c0}
+
+/* S10 tech */
+pre.tree{margin:0;font-family:var(--mono);font-size:17px;line-height:1.75;color:#e6defc}
+pre.tree b{color:var(--gold);font-weight:700}
+pre.tree i{color:var(--mute);font-style:normal}
+
+/* S11 demo */
+.s11 iframe{position:absolute;left:0;top:0;width:100%;height:100%;border:0;background:#0a0628}
+.s11 .ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--mute);font-size:20px}
+.s11 .open{position:absolute;right:64px;top:62px;font-family:var(--disp);font-size:16px;color:var(--ink);background:var(--gold);padding:11px 22px;text-decoration:none;transform:skewX(-10deg);box-shadow:0 4px 0 var(--ink);z-index:5}
+.s11 .open span{display:inline-block;transform:skewX(10deg)}
+.s11 .open:hover{filter:brightness(1.08)}
+.s11 .open:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+
+/* S12 roadmap */
+.tl{position:absolute;left:64px;top:218px;width:1152px;height:150px}
+.tl::before{content:"";position:absolute;left:30px;right:30px;top:25px;height:5px;background:rgba(255,255,255,.22)}
+.tl::after{content:"";position:absolute;left:30px;top:25px;height:5px;width:18%;background:linear-gradient(90deg,var(--cyan),var(--pink))}
+.st{position:absolute;top:0;width:210px;text-align:center}
+.st i{display:block;margin:6px auto 14px;width:38px;height:38px;transform:rotate(45deg);background:var(--ink);border:4px solid var(--paper);position:relative}
+.st i b{position:absolute;inset:0;display:grid;place-items:center;transform:rotate(-45deg);font-family:var(--disp);font-size:15px}
+.st.done i{background:var(--cyan);border-color:var(--ink);box-shadow:0 0 0 3px var(--cyan),0 0 22px var(--cyan);color:var(--ink)}
+.st h4{margin:0 0 4px;font-family:var(--head);font-style:italic;font-weight:700;font-size:21px}
+.st p{font-size:16.5px;line-height:1.45;color:#d8cef7}
+.kpi b{display:block;font-family:var(--disp);font-size:42px;color:var(--gold);text-shadow:0 3px 0 var(--ink);line-height:1.05}
+.kpi span{display:block;font-size:18px;margin-top:6px;color:#e6defc;line-height:1.45}
+
+/* S13 close */
+.s13 h1{position:absolute;left:0;right:0;top:140px;margin:0;text-align:center;font-family:var(--disp);font-size:108px;transform:skewX(-8deg);color:#fff;-webkit-text-stroke:5px var(--ink);paint-order:stroke fill;text-shadow:0 10px 0 var(--ink),0 0 40px rgba(255,95,162,.8)}
+.s13 .q{position:absolute;left:0;right:0;top:300px;text-align:center;font-family:var(--head);font-style:italic;font-weight:800;font-size:44px;text-shadow:4px 4px 0 var(--pink)}
+.s13 .go{position:absolute;left:50%;top:400px;transform:translateX(-50%) skewX(-12deg);font-family:var(--disp);font-size:26px;padding:16px 56px;background:linear-gradient(180deg,#fff7c9,var(--gold) 45%,#ff9a3c);color:var(--ink);border:3px solid var(--ink);box-shadow:0 0 0 3px #fff,0 8px 0 var(--ink),0 0 36px rgba(255,214,90,.6);text-decoration:none;white-space:nowrap}
+.s13 .go span{display:inline-block;transform:skewX(12deg)}
+.s13 .go:hover{filter:brightness(1.06)}
+.s13 .go:focus-visible{outline:3px solid var(--cyan);outline-offset:4px}
+.s13 .fine{position:absolute;left:0;right:0;top:500px;text-align:center;font-size:19px;color:var(--mute)}
+
+@media (prefers-reduced-motion:reduce){
+  .slide.active .rv{animation:none}#wipe .b{animation-duration:.01s!important}.s1 .rays,.cyc .orb,.s6 .arrow::after{animation:none}
+}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div id="bgfx"><div class="sky"></div><div class="moon"></div><div class="dots"></div><canvas id="petals" width="1280" height="720"></canvas></div>
+
+  <!-- 1 cover -->
+  <section class="slide s1 active" data-title="SHADOW SYNC">
+    <div class="rays"></div>
+    <canvas class="cc" data-who="hikari" data-s="4.5" data-ax="0.14" data-ox="175" data-oy="706" width="640" height="720" style="left:0;bottom:0"></canvas>
+    <canvas class="cc" data-who="kage" data-s="4.5" data-ax="3.0" data-ox="465" data-oy="706" width="640" height="720" style="right:0;bottom:0"></canvas>
+    <h1>SHADOW<br>SYNC</h1>
+    <div class="jp">影と光のデュエル</div>
+    <div class="sub">ท้าดวลกับเงาที่ขโมยท่าคุณไปทุกก้าว</div>
+    <div class="vsb">แอ็กชันดวลบอส เล่นบนเบราว์เซอร์</div>
+    <div class="hint">กด → หรือคลิกขวามือเพื่อไปต่อ</div>
+  </section>
+
+  <!-- 2 the rule -->
+  <section class="slide s2" data-title="กฎของสนาม">
+    <h1 class="ttl rv" style="--i:0">กฎข้อเดียวของสนามนี้<br>อย่าเล่นซ้ำท่าเดิม</h1>
+    <div class="pn cpA cy ht rv" style="--i:1;left:64px;top:210px;width:380px;height:290px"><div class="in">
+      <svg viewBox="0 0 100 100"><path d="M50 14a36 36 0 1 1-31 18" fill="none" stroke="#38e1ff" stroke-width="8" stroke-linecap="round"/><path d="M8 20l12 18 17-12z" fill="#38e1ff"/></svg>
+      <h3>วิ่งเส้นทางเดิมซ้ำ</h3><p>Kage จดเส้นทางของคุณ แล้วยิงดักล่วงหน้าแม่นขึ้นเรื่อย ๆ</p></div></div>
+    <div class="pn cpB rd ht rv" style="--i:2;left:466px;top:190px;width:350px;height:310px"><div class="in">
+      <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="rgba(255,45,85,.2)" stroke="#ff2d55" stroke-width="5" stroke-dasharray="10 7"/><path d="M50 50L50 12A38 38 0 0 1 88 50z" fill="rgba(255,45,85,.7)"/><circle cx="50" cy="50" r="5" fill="#fff"/></svg>
+      <h3>ยืนที่เดิมนาน ๆ</h3><p>จุดที่คุณชอบยืนจะถูกจดไว้ แล้วโดน SYNC BREAK ระเบิดลงตรงนั้น</p></div></div>
+    <div class="pn cpC vi ht rv" style="--i:3;left:838px;top:214px;width:378px;height:286px"><div class="in">
+      <svg viewBox="0 0 100 100"><g fill="none" stroke="#b36bff" stroke-width="7" stroke-linecap="round"><path d="M10 32h22c20 0 26 36 46 36"/><path d="M10 68h22c20 0 26-36 46-36"/></g><path d="M74 20l16 12-16 12z" fill="#b36bff"/><path d="M74 56l16 12-16 12z" fill="#b36bff"/></svg>
+      <h3>เปลี่ยนจังหวะ</h3><p>แดชคนละทาง สลับระยะสู้ Kage ต้องเริ่มอ่านใหม่ นี่คือทางรอด</p></div></div>
+    <div class="banner rv" style="--i:4;left:64px;top:540px;width:1152px;height:120px"><p>ยิ่งสู้นาน ยิ่งต้องเปลี่ยนท่า เพราะ Kage จำคุณได้ตลอดทั้ง 3 รอบ</p></div>
+  </section>
+
+  <!-- 3 concept -->
+  <section class="slide s3" data-title="คอนเซปต์">
+    <h1 class="ttl rv" style="--i:0">ยิ่งคุณเล่นซ้ำ<br>ยิ่งมันอ่านขาด</h1>
+    <div class="lead rv" style="--i:1">
+      <p>SHADOW SYNC คือเกมแอ็กชันดวลบอสมุมบน 1 ต่อ 1 บนสนามลอยฟ้า คุณคือ <b>Hikari</b> นักสู้สายแสง คู่ต่อสู้คือ <b>Kage-07</b> เงาที่แอบจดทุกก้าวของคุณ แล้วเล็ง เลือกระยะ และวางกับดักตรงจุดที่คุณชอบยืน พอ HP ลดมันจะตื่นเป็นเฟสใหม่</p>
+      <div style="margin-top:26px">
+        <span class="chip"><span>ชนะ 2 ใน 3 รอบ</span></span><span class="chip"><span>รอบละ 90 วินาที</span></span><span class="chip"><span>บอส 3 เฟส</span></span><span class="chip"><span>3 ระดับความยาก</span></span>
+      </div>
+    </div>
+    <div class="pn cpD pk ink ht rv" style="--i:2;left:664px;top:150px;width:552px;height:500px"><div class="in" style="padding:0">
+      <svg class="cyc" viewBox="0 0 520 480" width="100%" height="100%">
+        <ellipse cx="260" cy="240" rx="190" ry="150" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3" stroke-dasharray="10 10"/>
+        <circle r="10" fill="#ffd65a"><animateMotion dur="9s" repeatCount="indefinite" path="M260,90 A190,150 0 0 1 260,390 A190,150 0 0 1 260,90"/></circle>
+        <g fill="#ff5fa2" stroke="#120c2b" stroke-width="2"><polygon points="-10,-9 12,0 -10,9" transform="translate(394 134) rotate(38)"/><polygon points="-10,-9 12,0 -10,9" transform="translate(394 346) rotate(142)"/><polygon points="-10,-9 12,0 -10,9" transform="translate(126 346) rotate(-142)"/><polygon points="-10,-9 12,0 -10,9" transform="translate(126 134) rotate(-38)"/></g>
+        <text x="260" y="236" text-anchor="middle" style="font-family:var(--disp);font-style:normal;font-size:34px;fill:#ff5fa2">SYNC</text>
+        <text x="260" y="268" text-anchor="middle" style="font-size:17px;font-style:normal;font-weight:500;fill:#bdb1ee">ยิ่งซ้ำยิ่งโดนอ่าน</text>
+        <g><rect class="nd" x="180" y="60" width="160" height="56" stroke="#38e1ff" transform="rotate(0)"/><text x="260" y="96" text-anchor="middle">คุณเล่น</text></g>
+        <g><rect class="nd" x="340" y="212" width="170" height="56" stroke="#ff2d55"/><text x="425" y="248" text-anchor="middle">เงาแอบดู</text></g>
+        <g><rect class="nd" x="180" y="364" width="160" height="56" stroke="#ff5fa2"/><text x="260" y="400" text-anchor="middle">เงาขโมยท่า</text></g>
+        <g><rect class="nd" x="10" y="212" width="170" height="56" stroke="#8b5cff"/><text x="95" y="248" text-anchor="middle">คุณต้องเปลี่ยน</text></g>
+      </svg></div></div>
+  </section>
+
+  <!-- 4 characters -->
+  <section class="slide s4" data-title="ตัวละคร">
+    <h1 class="ttl rv" style="--i:0">Hikari แสง กับ Kage เงา</h1>
+    <div class="pn cpA cy ht rv" style="--i:1;left:64px;top:130px;width:566px;height:520px"><div class="in">
+      <canvas class="cc" data-who="hikari" data-s="3.9" data-ax="0.35" data-ox="150" data-oy="430" width="300" height="470" style="left:14px;top:30px"></canvas>
+      <div style="position:absolute;left:300px;top:24px;right:24px">
+        <p class="nm" style="font-family:var(--disp);font-size:36px;line-height:1">HIKARI <span style="font-size:22px;color:var(--cyan)">光</span></p>
+        <div class="role" style="color:var(--cyan)">ผู้เล่น: ผู้ถือแสงดาว</div>
+        <ul class="pts" style="--c:var(--cyan)"><li>ผมขาวปลายฟ้า ริบบิ้นชมพู ถือไม้เท้าดาว</li><li>กระสุนดาวสีฟ้า ยิงไว</li><li>สายแสง คล่องตัว แดชหลบได้</li></ul>
+        <div class="sw"><i style="background:#f5f8ff"></i><i style="background:#4fe6ff"></i><i style="background:#2b3191"></i><i style="background:#ff5fa2"></i><i style="background:#ffe9a8"></i></div>
+      </div></div></div>
+    <div class="pn cpC rd ht rv" style="--i:2;left:650px;top:130px;width:566px;height:520px"><div class="in">
+      <canvas class="cc" data-who="kage" data-s="3.9" data-ax="2.8" data-ox="150" data-oy="430" width="300" height="470" style="left:14px;top:30px"></canvas>
+      <div style="position:absolute;left:300px;top:24px;right:24px">
+        <p class="nm" style="font-family:var(--disp);font-size:36px;line-height:1">KAGE-07 <span style="font-size:22px;color:var(--red)">影</span></p>
+        <div class="role" style="color:#ff8aa0">คู่ต่อสู้: เงาที่เลียนแบบเธอ</div>
+        <ul class="pts" style="--c:var(--red)"><li>ผมดำปลายแดง หน้ากากครึ่งหน้า ผ้าพันคอยาว</li><li>ฮาโลข้อมูลลอยเหนือหัว มีเศษคริสตัลโคจรรอบตัว</li><li>กระสุนสีแดง แยกจากดาวสีฟ้าของคุณได้ทันที</li></ul>
+        <div class="sw"><i style="background:#241a48"></i><i style="background:#ff2d55"></i><i style="background:#efeaff"></i><i style="background:#b36bff"></i><i style="background:#c9143f"></i></div>
+      </div></div></div>
+  </section>
+
+  <!-- 5 gameplay -->
+  <section class="slide s5" data-title="วิธีเล่น">
+    <h1 class="ttl rv" style="--i:0">สี่สกิลของ Hikari<br>ปุ่มเดียวต่อท่า</h1>
+    <div class="pn cpB cy ht rv" style="--i:1;left:64px;top:196px;width:272px;height:246px"><div class="in" style="padding:18px"><div class="kb"><span class="kbd">คลิก</span></div><h3>STAR SHOT</h3><p style="font-size:18px">กดค้างยิงดาวรัว ไวแต่ Kage เบี่ยงหลบได้</p></div></div>
+    <div class="pn cpA pk ht rv" style="--i:2;left:354px;top:186px;width:272px;height:256px"><div class="in" style="padding:18px"><div class="kb"><span class="kbd">SPACE</span></div><h3>DASH</h3><p style="font-size:18px">พุ่งตัวเบา มีช่วงเฉียดกระสุน เติมใน 1 วินาที</p></div></div>
+    <div class="pn cpC vi ht rv" style="--i:3;left:644px;top:200px;width:272px;height:242px"><div class="in" style="padding:18px"><div class="kb"><span class="kbd">E</span></div><h3>STAR RAIN</h3><p style="font-size:18px">ฝนดาว 3 ระลอก พัดกว้าง เติมใน 8 วินาที</p></div></div>
+    <div class="pn cpE gd ht rv" style="--i:4;left:934px;top:190px;width:282px;height:252px"><div class="in" style="padding:18px"><div class="kb"><span class="kbd">Q</span></div><h3>PRISM BURST</h3><p style="font-size:18px">ไม้ตาย: คลื่นล้างกระสุน สตัน แล้วดาวนำวิถีลงมา</p></div></div>
+    <div class="pn cpD ink rv" style="--i:5;left:64px;top:470px;width:1152px;height:190px"><div class="in" style="padding:0">
+      <div class="stat" style="left:10px;width:270px"><b>100</b><span>HP ของคุณ<br>Kage มี 150 / 230 / 300</span></div>
+      <div class="stat" style="left:300px;width:250px"><b>90 วิ</b><span>ต่อรอบ หมดเวลา<br>ตัดสินที่ HP ที่เหลือ</span></div>
+      <div class="stat" style="left:570px;width:250px"><b>2 / 3</b><span>ชนะ 2 รอบก่อน<br>ได้แมตช์</span></div>
+      <div class="stat" style="left:840px;width:300px"><b>Tab</b><span>เปิดแผง Shadow Eye<br>ดูว่า Kage อ่านคุณถึงไหน</span></div>
+    </div></div>
+  </section>
+
+  <!-- AI in the game -->
+  <section class="slide sAI" data-title="AI ในเกม">
+    <h1 class="ttl rv" style="--i:0">AI ในเกมนี้คือ Kage-07<small>บอสที่เรียนรู้ระหว่างที่คุณสู้</small></h1>
+    <div class="pn cpB cy ht rv" style="--i:1;left:64px;top:176px;width:270px;height:220px"><div class="in"><h3>อ่านนิสัยคุณ</h3><p style="font-size:18px">จดตำแหน่ง ท่าแดช และระยะที่คุณชอบยืน</p></div></div>
+    <div class="pn cpA pk ht rv" style="--i:2;left:358px;top:168px;width:270px;height:228px"><div class="in"><h3>ทายว่าคุณจะไปไหน</h3><p style="font-size:18px">สลับสูตรดักตำแหน่ง 5 แบบ เชื่อสูตรที่แม่นสุด</p></div></div>
+    <div class="pn cpC vi ht rv" style="--i:3;left:652px;top:180px;width:270px;height:216px"><div class="in"><h3>เลือกท่าและหลบเอง</h3><p style="font-size:18px">ให้คะแนนท่าตามระยะ หลบกระสุนของคุณเอง</p></div></div>
+    <div class="pn cpD rd ht rv" style="--i:4;left:946px;top:172px;width:270px;height:224px"><div class="in"><h3>ตื่นเป็นเฟสใหม่</h3><p style="font-size:18px">HP ลดแล้วเร็วขึ้น ได้ท่าใหม่ ต่อคอมโบ</p></div></div>
+    <div class="pn cpE gd ink rv" style="--i:5;left:64px;top:428px;width:1152px;height:236px"><div class="in" style="padding:18px 28px">
+      <h3 style="font-size:26px;margin-bottom:12px">AI ตัวนี้มาจากไหน</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:28px">
+        <div><b style="font-size:20px;color:var(--gold)">ไม่ใช่โมเดลสำเร็จรูป</b><p style="font-size:18px;margin-top:6px">ไม่ได้ใช้ GPT, Claude หรือโครงข่ายประสาท ไม่ต้องต่ออินเทอร์เน็ตหรือเรียก API</p></div>
+        <div><b style="font-size:20px;color:var(--gold)">เขียนเองด้วย JavaScript</b><p style="font-size:18px;margin-top:6px">ใช้อัลกอริทึม Hedge (Freund &amp; Schapire, 1997) ร่วมกับการให้คะแนนท่าและ state machine</p></div>
+        <div><b style="font-size:20px;color:var(--gold)">เรียนรู้สดตอนเล่น</b><p style="font-size:18px;margin-top:6px">ไม่มีข้อมูลฝึกล่วงหน้า เริ่มแมตช์ใหม่ก็เริ่มจากศูนย์ เป็น AI เกมที่ปรับตัวตามผู้เล่น ไม่ใช่ deep learning</p></div>
+      </div></div></div>
+  </section>
+
+  <!-- 6 architecture -->
+  <section class="slide s6" data-title="สถาปัตยกรรม AI">
+    <h1 class="ttl rv" style="--i:0">ในหัวของ Kage-07 มี 4 ชั้น</h1>
+    <div class="pn cpB cy ht col rv" style="--i:1;left:64px;top:150px;width:262px;height:400px"><div class="in"><h3>แอบดู <small>OBSERVE</small></h3>
+      <ul class="pts" style="--c:var(--cyan)"><li>ตำแหน่งและความเร็วของคุณ</li><li>แดชไปทางไหนบ่อย</li><li>ยืนระยะใกล้ กลาง หรือไกล</li><li>แผนที่ความร้อน 14×8 ช่อง</li><li>หลบกระสุนไปข้างไหน</li></ul></div></div>
+    <div class="pn cpA pk ht col rv" style="--i:2;left:370px;top:150px;width:262px;height:400px"><div class="in"><h3>ขโมยท่า <small>LEARN</small></h3>
+      <ul class="pts" style="--c:var(--pink)"><li><b>Hedge</b> ถ่วงน้ำหนักตัวทำนาย 5 แบบ</li><li><b>Range bandit</b> เลือกระยะที่เสียเปรียบน้อยสุด</li><li><b>Habit map</b> จดจุดที่คุณชอบยืน</li></ul></div></div>
+    <div class="pn cpC vi ht col rv" style="--i:3;left:676px;top:150px;width:262px;height:400px"><div class="in"><h3>วางแผน <small>DECIDE</small></h3>
+      <ul class="pts" style="--c:var(--violet)"><li><b>ให้คะแนนท่า</b> เลือกท่าที่เหมาะกับสถานการณ์</li><li><b>เฟสบอส</b> AWAKEN ที่ 60% และ OVERCLOCK ที่ 30%</li><li>คอมโบต่อท่า สุ่ม ±20% กันถูกอ่านง่าย</li></ul></div></div>
+    <div class="pn cpD rd ht col rv" style="--i:4;left:982px;top:150px;width:234px;height:400px"><div class="in"><h3>ลงมือ <small>ACT</small></h3>
+      <ul class="pts" style="--c:var(--red)"><li>สุ่มทดลอง 16 ทิศ เพื่อหลบกระสุน</li><li>หน่วงปฏิกิริยา 0.10–0.34 วินาที</li><li>เตือนก่อนโจมตีทุกท่า</li></ul></div></div>
+    <div class="arrow" style="left:326px"></div><div class="arrow" style="left:632px"></div><div class="arrow" style="left:938px"></div>
+    <div class="banner rv" style="--i:5;left:64px;top:576px;width:1152px;height:84px"><p style="font-size:25px">วนทุกเฟรม และ Kage จำคุณได้ตลอด 3 รอบของแมตช์</p></div>
+  </section>
+
+  <!-- 7 hedge demo -->
+  <section class="slide s7" data-title="เดโม Hedge">
+    <h1 class="ttl rv" style="--i:0">ลองหลอก Kage ดู</h1>
+    <div class="pn cpB cy ink rv" style="--i:1;left:64px;top:132px;width:760px;height:520px"><div class="in" style="padding:0;overflow:hidden"><canvas id="hedge" width="752" height="512"></canvas></div></div>
+    <div class="pn cpE pk ht rv" style="--i:2;left:848px;top:132px;width:368px;height:520px"><div class="in" style="padding:16px 20px">
+      <div style="font-size:16px;color:var(--mute);margin-bottom:2px">รูปแบบการเคลื่อนที่ของเป้า</div>
+      <div class="seg" id="hSeg"><button data-m="line" class="on"><span>เส้นตรง</span></button><button data-m="circle"><span>วนวง</span></button><button data-m="stopgo"><span>หยุดแล้วไป</span></button><button data-m="zig"><span>ซิกแซก</span></button><button data-m="mouse"><span>เมาส์ของคุณ</span></button></div>
+      <div id="hRows"></div>
+      <div class="formula">w ← w × e^(−η × error)</div>
+      <label for="hEta"><span>η อัตราเรียนรู้</span><b id="hEtaV">0.7</b></label><input id="hEta" type="range" min="0.1" max="2" step="0.05" value="0.7">
+      <p style="font-size:16px;line-height:1.5;margin-top:8px;color:#d8cef7">ทุก 0.2 วิ Kage ทายว่าคุณจะอยู่ตรงไหนในอีก 0.5 วิ แล้วตรวจคำตอบ สูตรที่พลาดจะถูกลดน้ำหนัก</p>
+    </div></div>
+  </section>
+
+  <!-- 8 attacks -->
+  <section class="slide s8" data-title="ท่าโจมตี">
+    <h1 class="ttl rv" style="--i:0">ท่าของ Kage-07</h1>
+    <div class="pn cpA cy ht atk rv" style="--i:1;left:64px;top:140px;width:214px;height:330px"><div class="in" style="padding:18px 18px">
+      <svg viewBox="0 0 100 100"><circle cx="78" cy="50" r="13" fill="none" stroke="#38e1ff" stroke-width="4"/><path d="M78 30v8M78 62v8M58 50h8M90 50h8" stroke="#38e1ff" stroke-width="4"/><path d="M6 50h44" stroke="#ff2d55" stroke-width="6" stroke-linecap="round"/><path d="M50 40l16 10-16 10z" fill="#ff2d55"/></svg>
+      <span class="en">ชาโดว์ช็อต</span><p>ดักล่วงหน้าตามสูตรที่แม่นสุด โดนง่ายถ้าเดินตรง ๆ</p></div></div>
+    <div class="pn cpB pk ht atk rv" style="--i:2;left:298px;top:150px;width:214px;height:320px"><div class="in" style="padding:18px 18px">
+      <svg viewBox="0 0 100 100"><g stroke="#ff2d55" stroke-width="5" stroke-linecap="round"><path d="M10 50L92 50"/><path d="M10 50L88 26"/><path d="M10 50L88 74"/><path d="M10 50L80 8"/><path d="M10 50L80 92"/></g></svg>
+      <span class="en">จันทร์เสี้ยว</span><p>ยิงพัดปิดทางหนี อย่าหนีทางเดิมซ้ำ</p></div></div>
+    <div class="pn cpC vi ht atk rv" style="--i:3;left:532px;top:136px;width:214px;height:334px"><div class="in" style="padding:18px 18px">
+      <svg viewBox="0 0 100 100"><g fill="#b36bff"><circle cx="50" cy="12" r="6"/><circle cx="71" cy="18" r="6"/><circle cx="85" cy="33" r="6"/><circle cx="90" cy="50" r="6"/><circle cx="85" cy="68" r="6"/><circle cx="71" cy="83" r="6"/><circle cx="50" cy="88" r="6"/><circle cx="29" cy="83" r="6"/><circle cx="15" cy="68" r="6"/><circle cx="10" cy="50" r="6"/><circle cx="15" cy="33" r="6"/><circle cx="29" cy="18" r="6"/></g></svg>
+      <span class="en">บุปผาเงา</span><p>วงกระสุนรอบตัว เฟส 2 เป็นเกลียวหมุน ต้องหาช่องลอด</p></div></div>
+    <div class="pn cpD rd ht atk rv" style="--i:4;left:766px;top:148px;width:214px;height:322px"><div class="in" style="padding:18px 18px">
+      <svg viewBox="0 0 100 100"><path d="M14 86L86 14" stroke="#ff2d55" stroke-width="12" stroke-linecap="round"/><path d="M14 86L86 14" stroke="#fff" stroke-width="3" stroke-dasharray="8 8"/><path d="M6 60l22 6-6 22" fill="none" stroke="#ffd65a" stroke-width="4"/></svg>
+      <span class="en">เงาพุ่ง</span><p>เตือนแล้วพุ่งฟัน เฟส 2 พุ่งต่อเนื่อง ต้องแดชให้ทัน</p></div></div>
+    <div class="pn cpE gd ht atk rv" style="--i:5;left:1000px;top:138px;width:216px;height:332px"><div class="in" style="padding:18px 18px">
+      <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="rgba(255,45,85,.2)" stroke="#ff2d55" stroke-width="5" stroke-dasharray="10 7"/><path d="M50 50L50 12A38 38 0 0 1 88 50z" fill="rgba(255,45,85,.7)"/><circle cx="50" cy="50" r="5" fill="#fff"/></svg>
+      <span class="en">SYNC BREAK</span><p>ระเบิดลงจุดที่คุณชอบยืนที่สุด ห้ามนิ่งที่เดิม</p></div></div>
+    <div class="pn cpB ink rv" style="--i:6;left:64px;top:500px;width:1152px;height:160px"><div class="in" style="padding:16px 30px;display:grid;grid-template-columns:420px 1fr;gap:30px;align-items:center">
+      <div><h3 style="font-size:25px">เฟส 2 ปลดล็อก เงาซ้อน</h3><p style="font-size:18px">โคลนล้อมคุณแล้วยิงพร้อมกัน เลือกท่าด้วยคะแนน ค่าพื้นฐาน × สถานการณ์ × สุ่ม 0.8–1.2</p></div>
+      <div><div style="font-size:15px;color:var(--mute);margin-bottom:2px">ตัวอย่างคะแนนตอนคุณบุกเข้ามาใกล้กว่า 210 px</div>
+        <div class="bars2 hi"><span>บุปผาเงา</span><div class="t"><i style="width:100%"></i></div><span>1.50</span></div>
+        <div class="bars2"><span>จันทร์เสี้ยว</span><div class="t"><i style="width:87%"></i></div><span>1.30</span></div>
+        <div class="bars2"><span>ชาโดว์ช็อต</span><div class="t"><i style="width:67%"></i></div><span>1.00</span></div></div>
+    </div></div>
+  </section>
+
+  <!-- 9 fairness & feel -->
+  <section class="slide s9" data-title="ความยุติธรรมและฟีล">
+    <h1 class="ttl rv" style="--i:0">ยากแบบยุติธรรม<br>ดวลให้สะใจ</h1>
+    <div class="pn cpA cy ht rv" style="--i:1;left:64px;top:190px;width:560px;height:268px"><div class="in"><h3>ยุติธรรม</h3>
+      <ul class="pts" style="--c:var(--cyan)"><li>ทุกท่าโจมตีมีเส้นหรือวงเตือนก่อนเสมอ</li><li>ความยากเพิ่มตามเฟสอย่างเปิดเผย มีคัตอินบอกก่อน และมีท่าใหม่ ไม่ใช่แค่ตัวเลขซ่อน</li><li>หน่วงปฏิกิริยา 0.10–0.34 วินาที ไม่หลบทันใจเกินมนุษย์</li><li>ปิดโหมดอ่านท่าได้ จะเจอบอทธรรมดาที่ไม่เรียนรู้</li></ul></div></div>
+    <div class="pn cpC pk ht rv" style="--i:2;left:656px;top:182px;width:560px;height:276px"><div class="in"><h3>ฟีลการต่อสู้</h3>
+      <ul class="pts" style="--c:var(--pink)"><li>Hit-stop และจอสั่นทุกครั้งที่โดน</li><li>คัตอินตอน Burst, SYNC BREAK และบอทตื่นเฟสใหม่</li><li>Prism Burst: คลื่น เสาแสง แล้วดาวนำวิถีตามมา</li><li>เพลงและเอฟเฟกต์เสียงสังเคราะห์สดด้วย WebAudio</li></ul></div></div>
+    <div class="pn cpD vi ink rv" style="--i:3;left:64px;top:486px;width:1152px;height:176px"><div class="in" style="padding:14px 26px">
+      <table class="cmp"><thead><tr><th></th><th class="on-c">อ่านท่า: เปิด</th><th class="off-c">อ่านท่า: ปิด (บอทธรรมดา)</th></tr></thead><tbody>
+        <tr><td>การเล็ง</td><td>สลับสูตรดัก 5 แบบ เลือกสูตรที่แม่นสุด</td><td>เล็งตำแหน่งที่ยืนอยู่ตรง ๆ</td></tr>
+        <tr><td>ระยะและกับดัก</td><td>เลือกระยะตามที่คุณเสียเปรียบ วางกับดักบนจุดโปรด</td><td>ระยะคงที่ วางกับดักสุ่ม</td></tr>
+      </tbody></table></div></div>
+  </section>
+
+  <!-- 10 tech -->
+  <section class="slide s10" data-title="เทคโนโลยี">
+    <h1 class="ttl rv" style="--i:0">เล่นบนเบราว์เซอร์ ไม่ต้องติดตั้ง</h1>
+    <div class="pn cpB cy ink rv" style="--i:1;left:64px;top:140px;width:440px;height:510px"><div class="in"><h3 style="font-size:24px;margin-bottom:14px">ไฟล์ของเกม</h3>
+<pre class="tree"><b>shadow-sync/</b>
+├ <b>game.html</b>
+│  <i>ลูปเกม, AI, HUD, เสียง</i>
+├ <b>characters.js</b>
+│  <i>วาดตัวละครด้วยโค้ด</i>
+│  <i>ผมและผ้าพันคอมีฟิสิกส์</i>
+├ <b>index.html</b>
+│  <i>หน้าแนะนำเกม</i>
+└ <b>DESIGN.md</b>
+   <i>บันทึกการออกแบบ</i></pre></div></div>
+    <div class="pn cpA pk ht rv" style="--i:2;left:528px;top:140px;width:688px;height:176px"><div class="in"><h3 style="font-size:24px">เทคโนโลยี</h3>
+      <span class="chip"><span>HTML5 Canvas 2D</span></span><span class="chip"><span>JavaScript ล้วน</span></span><span class="chip"><span>WebAudio</span></span><span class="chip"><span>ไม่ต้องติดตั้งอะไรเพิ่ม</span></span><span class="chip"><span>ภาพและเสียงสร้างด้วยโค้ด</span></span></div></div>
+    <div class="pn cpD vi ht rv" style="--i:3;left:528px;top:340px;width:220px;height:310px"><div class="in" style="padding:18px"><h3 style="font-size:22px">ควบคุม</h3><p style="font-size:18px">WASD เดิน เมาส์เล็งและยิง Space แดช Q ไม้ตาย E ฝนดาว</p></div></div>
+    <div class="pn cpC gd ht rv" style="--i:4;left:768px;top:340px;width:220px;height:310px"><div class="in" style="padding:18px"><h3 style="font-size:22px">เล่นได้ที่</h3><p style="font-size:18px">เบราว์เซอร์เดสก์ท็อปรุ่นใหม่ ยังไม่รองรับหน้าจอสัมผัส</p></div></div>
+    <div class="pn cpE rd ht rv" style="--i:5;left:1008px;top:340px;width:208px;height:310px"><div class="in" style="padding:18px"><h3 style="font-size:22px">เสียง</h3><p style="font-size:18px">เพลงและเอฟเฟกต์สังเคราะห์สด กด M เพื่อปิดเสียง</p></div></div>
+  </section>
+
+  <!-- 11 live demo -->
+  <section class="slide s11" data-title="เดโมสด">
+    <h1 class="ttl rv" style="--i:0">ลงสนามเลย</h1>
+    <a class="open" href="game.html" target="_blank" rel="noopener"><span>เปิดเต็มจอในแท็บใหม่</span></a>
+    <div class="pn cpB cy ink rv" style="--i:1;left:152px;top:128px;width:976px;height:549px"><div class="in" style="padding:0"><div class="ph" id="demoPh">กำลังโหลดเกม…</div><iframe id="demo" title="SHADOW SYNC" allow="autoplay"></iframe></div></div>
+  </section>
+
+  <!-- 12 roadmap -->
+  <section class="slide s12" data-title="เส้นทางต่อไป">
+    <h1 class="ttl rv" style="--i:0">อัปเดตที่วางแผนไว้</h1>
+    <div class="tl rv" style="--i:1">
+      <div class="st done" style="left:0"><i><b>1</b></i><h4>เวอร์ชันนี้</h4><p>เล่นได้แล้ว บอสมี 3 เฟส</p></div>
+      <div class="st" style="left:236px"><i><b>2</b></i><h4>ฟังเสียงผู้เล่น</h4><p>ให้คนลองเล่น แล้วจูนความยาก</p></div>
+      <div class="st" style="left:472px"><i><b>3</b></i><h4>Kage ฉลาดขึ้น</h4><p>ฝึกโมเดลจากข้อมูลการต่อสู้จริง</p></div>
+      <div class="st" style="left:708px"><i><b>4</b></i><h4>บอสและสนามใหม่</h4><p>คู่ต่อสู้ใหม่ ท่าใหม่</p></div>
+      <div class="st" style="left:942px"><i><b>5</b></i><h4>เวอร์ชันเต็ม</h4><p>เปิดให้เล่นบนเว็บ</p></div>
+    </div>
+    <div class="pn cpA cy ht kpi rv" style="--i:2;left:64px;top:420px;width:368px;height:236px"><div class="in"><b style="font-size:30px">Kage รุ่นฝึกจริง</b><span>ฝึกโครงข่ายขนาดเล็กจากข้อมูลผู้เล่น มาแทนสูตรที่เขียนเอง</span></div></div>
+    <div class="pn cpB pk ht kpi rv" style="--i:3;left:456px;top:410px;width:368px;height:246px"><div class="in"><b style="font-size:30px">บทพูดสด</b><span>Kage เหน็บแนมตามสถิติของคุณจริง ๆ ไม่ใช่บทตายตัว</span></div></div>
+    <div class="pn cpC gd ht kpi rv" style="--i:4;left:848px;top:424px;width:368px;height:232px"><div class="in"><b style="font-size:30px">ผีนักสู้</b><span>ใช้ replay ของผู้เล่นเก่ง ๆ เป็นคู่ต่อสู้</span></div></div>
+  </section>
+
+  <!-- 13 close -->
+  <section class="slide s13" data-title="จบ">
+    <div class="rays" style="position:absolute;inset:0;background:repeating-conic-gradient(from 0deg at 50% 50%,rgba(255,255,255,.12) 0 1deg,transparent 1deg 6deg);-webkit-mask-image:radial-gradient(circle,transparent 20%,#000 80%);mask-image:radial-gradient(circle,transparent 20%,#000 80%)"></div>
+    <canvas class="cc" data-who="hikari" data-s="3.9" data-ax="0.3" data-ox="170" data-oy="580" width="400" height="600" style="left:30px;bottom:0"></canvas>
+    <canvas class="cc" data-who="kage" data-s="3.9" data-ax="2.85" data-ox="230" data-oy="580" width="400" height="600" style="right:30px;bottom:0"></canvas>
+    <h1>準備はいい?</h1>
+    <div class="q">พร้อมดวลกับเงาของคุณหรือยัง</div>
+    <a class="go" href="game.html" target="_blank" rel="noopener"><span>เริ่มต่อสู้</span></a>
+    <div class="fine">เล่นได้ทันทีบนเบราว์เซอร์</div>
+  </section>
+
+  <button class="nav l" id="navL" aria-label="สไลด์ก่อนหน้า"><i><span>&lt;</span></i></button>
+  <button class="nav r" id="navR" aria-label="สไลด์ถัดไป"><i><span>&gt;</span></i></button>
+  <div id="ticks"></div>
+  <div id="pg"><b id="pgN">1</b>/<span id="pgT">13</span></div>
+  <div id="wipe"><div class="b b0"></div><div class="b b1"></div><div class="b b2"></div></div>
+  <div id="sfx"></div>
+</div>
+
+<script src="characters.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id), clamp=(v,a,b)=>v<a?a:v>b?b:v, TAU=Math.PI*2;
+const deck=$('deck'), slides=[...document.querySelectorAll('.slide')], N=slides.length;
+let cur=0, busy=false;
+
+/* ---------- scale to fit ---------- */
+function fit(){ const s=Math.min(innerWidth/1280,innerHeight/720); deck.style.transform='translate(-50%,-50%) scale('+s+')'; }
+addEventListener('resize',fit); fit();
+/* wait for the web fonts before showing anything, so text never jumps after load */
+function whenFontsReady(){
+  const t=new Promise(r=>setTimeout(r,1500));
+  if(!document.fonts||!document.fonts.load) return t;
+  const L=[['400 20px "Dela Gothic One"','AaกJ'],['italic 800 20px Kanit','Aaก'],['italic 700 20px Kanit','Aaก'],['400 20px Prompt','Aaก'],['500 20px Prompt','Aaก'],['600 20px Prompt','Aaก']];
+  return Promise.race([Promise.all(L.map(a=>document.fonts.load(a[0],a[1]).catch(()=>0))),t]);
+}
+whenFontsReady().then(()=>setTimeout(()=>document.documentElement.classList.add('ready'),60));
+
+/* ---------- chrome ---------- */
+const ticks=$('ticks'); slides.forEach((s,i)=>{ const b=document.createElement('button'); b.setAttribute('aria-label','ไปสไลด์ '+(i+1)+': '+(s.dataset.title||'')); b.onclick=()=>go(i); ticks.appendChild(b); });
+$('pgT').textContent=N;
+function paint(){ [...ticks.children].forEach((b,i)=>b.classList.toggle('on',i===cur)); $('pgN').textContent=cur+1; history.replaceState(null,'','#'+(cur+1)); }
+
+/* ---------- transitions ---------- */
+const SFX=['ズバッ!','ドン!','ピカッ!','バシッ!','シュッ!'];
+function go(n){
+  n=clamp(n,0,N-1); if(n===cur||busy) return; busy=true;
+  const dir=n>cur?1:-1, w=$('wipe'), sf=$('sfx');
+  w.className=''; void w.offsetWidth; w.className=dir>0?'fwd':'back';
+  sf.textContent=SFX[(Math.random()*SFX.length)|0]; sf.classList.remove('go'); void sf.offsetWidth; sf.classList.add('go');
+  setTimeout(()=>{ slides[cur].classList.remove('active'); leave(cur); cur=n; slides[cur].classList.add('active'); enter(cur); paint(); },300);
+  setTimeout(()=>{ w.className=''; busy=false; },640);
+}
+function enter(i){ if(slides[i].classList.contains('s11')){ const f=$('demo'); f.src='game.html'; f.onload=()=>{ $('demoPh').style.display='none'; }; } }
+function leave(i){ if(slides[i].classList.contains('s11')){ const f=$('demo'); f.removeAttribute('src'); f.src='about:blank'; $('demoPh').style.display='grid'; } }
+addEventListener('keydown',e=>{
+  if(e.target&&/INPUT|BUTTON|A/.test(e.target.tagName)&&(e.key===' '||e.key==='Enter')) return;
+  if(['ArrowRight','PageDown',' ','Enter'].includes(e.key)){ e.preventDefault(); go(cur+1); }
+  else if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){ e.preventDefault(); go(cur-1); }
+  else if(e.key==='Home') go(0); else if(e.key==='End') go(N-1);
+  else if(e.key==='f'||e.key==='F'){ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen(); }
+});
+addEventListener('hashchange',()=>{ const h=parseInt(location.hash.slice(1),10); if(h>=1&&h<=N&&h-1!==cur){ slides[cur].classList.remove('active'); leave(cur); cur=h-1; slides[cur].classList.add('active'); enter(cur); paint(); } });
+$('navL').onclick=()=>go(cur-1); $('navR').onclick=()=>go(cur+1);
+let tx=null; addEventListener('touchstart',e=>{ tx=e.touches[0].clientX; },{passive:true}); addEventListener('touchend',e=>{ if(tx===null) return; const d=e.changedTouches[0].clientX-tx; if(Math.abs(d)>60) go(cur+(d<0?1:-1)); tx=null; });
+{ const h=parseInt(location.hash.slice(1),10); if(h>=1&&h<=N){ slides[0].classList.remove('active'); cur=h-1; slides[cur].classList.add('active'); enter(cur); } paint(); }
+
+/* ---------- character canvases ---------- */
+const ccs=[...document.querySelectorAll('canvas.cc')].map(c=>({c,x:c.getContext('2d'),rig:CH.makeRig(c.dataset.who),who:c.dataset.who,s:+c.dataset.s,ax:+c.dataset.ax,ox:+c.dataset.ox,oy:+c.dataset.oy,slide:c.closest('.slide')}));
+/* ---------- petals ---------- */
+const pc=$('petals'), px=pc.getContext('2d'), petals=[]; for(let i=0;i<26;i++) petals.push({x:Math.random()*1280,y:Math.random()*720,vy:18+Math.random()*34,ph:Math.random()*6,f:.8+Math.random()*1.4,r:Math.random()*6,vr:(Math.random()-.5)*1.6,s:4+Math.random()*4,a:.25+Math.random()*.4});
+let last=performance.now(), clock=0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(.05,(now-last)/1000); last=now; clock+=dt;
+  px.clearRect(0,0,1280,720); px.fillStyle='#ffc2dc';
+  for(const p of petals){ p.y+=p.vy*dt; p.x+=Math.sin(clock*p.f+p.ph)*26*dt+10*dt; p.r+=p.vr*dt; if(p.y>730){p.y=-10;p.x=Math.random()*1280;} if(p.x>1290)p.x=-10;
+    px.save(); px.translate(p.x,p.y); px.rotate(p.r); px.globalAlpha=p.a; px.beginPath(); px.ellipse(0,0,p.s,p.s*.55,0,0,TAU); px.fill(); px.restore(); }
+  for(const o of ccs){ if(!o.slide.classList.contains('active')) continue;
+    o.x.clearRect(0,0,o.c.width,o.c.height);
+    const flip=Math.cos(o.ax)<0?-1:1, sway=Math.sin(clock*1.1+(o.who==='kage'?1.5:0))*.12;
+    CH.updateRig(o.rig,dt,0,0,flip,o.s);
+    CH.drawChar(o.x,o.rig,o.ox,o.oy,o.s,{aim:o.ax+sway,flip,t:clock,aura:true}); }
+  if(slides[cur].classList.contains('s7')) hedgeFrame(dt);
+}
+requestAnimationFrame(frame);
+
+/* ================= Hedge demo (slide 7) ================= */
+const hc=$('hedge'), hx=hc.getContext('2d'), HW=752, HH=512;
+const HN=['ดักวิ่งตรง','ดักยืนนิ่ง','ดักเบรก','ดักเลี้ยว','ดักรังโปรด'], HCOL=['#38e1ff','#ffd65a','#b08cff','#ff5fa2','#7dffb2'];
+const H={mode:'line',eta:.7,w:[.2,.2,.2,.2,.2],t:0,x:376,y:256,vx:0,vy:0,bx:260,by:170,hist:[],probes:[],probeT:0,theta:0,omega:0,mouse:{x:376,y:256},mouseIn:false,fx:[],cur:0,ang:0};
+$('hRows').innerHTML=HN.map((n,i)=>'<div class="wr" data-i="'+i+'"><span style="color:'+HCOL[i]+'">'+n+'</span><div class="t"><i style="background:'+HCOL[i]+'"></i></div><em>20%</em></div>').join('');
+document.querySelectorAll('#hSeg button').forEach(b=>b.onclick=()=>{ H.mode=b.dataset.m; document.querySelectorAll('#hSeg button').forEach(x=>x.classList.toggle('on',x===b)); H.w=[.2,.2,.2,.2,.2]; H.probes=[]; });
+$('hEta').oninput=e=>{ H.eta=+e.target.value; $('hEtaV').textContent=H.eta.toFixed(2); };
+hc.addEventListener('mousemove',e=>{ const r=hc.getBoundingClientRect(); H.mouse.x=(e.clientX-r.left)/r.width*HW; H.mouse.y=(e.clientY-r.top)/r.height*HH; H.mouseIn=true; });
+hc.addEventListener('mouseleave',()=>{ H.mouseIn=false; });
+function hedgeStep(dt){
+  H.t+=dt; const px0=H.x, py0=H.y; const t=H.t;
+  if(H.mode==='line'||H.mode==='stopgo'){
+    if(H.vbx===undefined){ H.vbx=250; H.vby=170; }
+    const run=H.mode==='stopgo'?((t%2.4)<1.2?1:0):1;
+    H.bx+=H.vbx*dt*run; H.by+=H.vby*dt*run;
+    if(H.bx<40||H.bx>HW-40){ H.vbx*=-1; H.bx=clamp(H.bx,40,HW-40); } if(H.by<40||H.by>HH-40){ H.vby*=-1; H.by=clamp(H.by,40,HH-40); }
+    H.x=H.bx; H.y=H.by;
+  } else if(H.mode==='circle'){ H.x=HW/2+230*Math.cos(t*1.5); H.y=HH/2+150*Math.sin(t*1.5); }
+  else if(H.mode==='zig'){ H.x=HW/2+290*Math.sin(t*.75); H.y=HH/2+150*Math.sin(t*3.3); }
+  else if(H.mode==='mouse'){ const tx=H.mouseIn?H.mouse.x:HW/2, ty=H.mouseIn?H.mouse.y:HH/2; H.x+=(tx-H.x)*Math.min(1,dt*14); H.y+=(ty-H.y)*Math.min(1,dt*14); }
+  const nvx=(H.x-px0)/dt, nvy=(H.y-py0)/dt; H.vx+=(nvx-H.vx)*Math.min(1,dt*14); H.vy+=(nvy-H.vy)*Math.min(1,dt*14);
+  const sp=Math.hypot(H.vx,H.vy); if(sp>25){ const th=Math.atan2(H.vy,H.vx); let d=th-H.theta; d=((d+Math.PI)%TAU+TAU)%TAU-Math.PI; H.omega+=(d/dt-H.omega)*Math.min(1,dt*6); H.theta=th; } else H.omega*=.9;
+  H.hist.push([t,H.x,H.y]); while(H.hist.length&&t-H.hist[0][0]>3) H.hist.shift();
+}
+function hedgePredict(T){
+  const x=H.x,y=H.y,vx=H.vx,vy=H.vy,sp=Math.hypot(vx,vy); let cx=0,cy=0; for(const h of H.hist){ cx+=h[1]; cy+=h[2]; } cx/=H.hist.length||1; cy/=H.hist.length||1;
+  let tx=x+vx*T*.5, ty=y+vy*T*.5; const w=H.omega;
+  if(Math.abs(w)>.25&&sp>25){ tx=x+(sp/w)*(Math.sin(H.theta+w*T)-Math.sin(H.theta)); ty=y+(sp/w)*(Math.cos(H.theta)-Math.cos(H.theta+w*T)); } else { tx=x+vx*T; ty=y+vy*T; }
+  return [[x+vx*T,y+vy*T],[x,y],[x+vx*T*.45,y+vy*T*.45],[tx,ty],[x+(cx-x)*.45+vx*T*.25,y+(cy-y)*.45+vy*T*.25]].map(p=>[clamp(p[0],10,HW-10),clamp(p[1],10,HH-10)]);
+}
+function hedgeFrame(dt){
+  hedgeStep(Math.max(dt,.001));
+  H.probeT-=dt; if(H.probeT<=0){ H.probeT=.2; H.probes.push({t:H.t,pts:hedgePredict(.5)}); }
+  for(let i=H.probes.length-1;i>=0;i--){ const p=H.probes[i]; if(H.t-p.t<.5) continue; H.probes.splice(i,1);
+    const err=p.pts.map(q=>Math.min(1,Math.hypot(q[0]-H.x,q[1]-H.y)/90));
+    for(let k=0;k<5;k++) H.w[k]*=Math.exp(-H.eta*err[k]*1.6);
+    let s=H.w.reduce((a,b)=>a+b,0); for(let k=0;k<5;k++) H.w[k]=Math.max(.02,H.w[k]/s);
+    s=H.w.reduce((a,b)=>a+b,0); for(let k=0;k<5;k++) H.w[k]/=s;
+    p.pts.forEach((q,k)=>H.fx.push({x:q[0],y:q[1],tx:H.x,ty:H.y,k,life:.5,err:err[k]})); }
+  let bi=0; for(let k=1;k<5;k++) if(H.w[k]>H.w[bi]) bi=k; H.cur=bi;
+  // draw
+  const c=hx; c.clearRect(0,0,HW,HH);
+  const g=c.createLinearGradient(0,0,0,HH); g.addColorStop(0,'#150c3d'); g.addColorStop(1,'#0b0624'); c.fillStyle=g; c.fillRect(0,0,HW,HH);
+  c.strokeStyle='rgba(120,220,255,.08)'; c.lineWidth=1; for(let x=0;x<HW;x+=47){ c.beginPath(); c.moveTo(x,0); c.lineTo(x,HH); c.stroke(); } for(let y=0;y<HH;y+=47){ c.beginPath(); c.moveTo(0,y); c.lineTo(HW,y); c.stroke(); }
+  // trail
+  c.lineCap='round'; for(let i=1;i<H.hist.length;i++){ const a=i/H.hist.length; c.strokeStyle='rgba(56,225,255,'+(a*.5)+')'; c.lineWidth=2+a*5; c.beginPath(); c.moveTo(H.hist[i-1][1],H.hist[i-1][2]); c.lineTo(H.hist[i][1],H.hist[i][2]); c.stroke(); }
+  // pending predictions
+  for(const p of H.probes){ const a=1-(H.t-p.t)/.5; p.pts.forEach((q,k)=>{ c.globalAlpha=.15+.55*a; c.strokeStyle=HCOL[k]; c.lineWidth=2.5; c.beginPath(); c.arc(q[0],q[1],7,0,TAU); c.stroke(); }); } c.globalAlpha=1;
+  // scored predictions: line to the truth
+  for(let i=H.fx.length-1;i>=0;i--){ const f=H.fx[i]; f.life-=dt; if(f.life<=0){ H.fx.splice(i,1); continue; } const a=f.life/.5; c.globalAlpha=a*.7; c.strokeStyle=HCOL[f.k]; c.lineWidth=2; c.beginPath(); c.moveTo(f.x,f.y); c.lineTo(f.tx,f.ty); c.stroke(); c.fillStyle=HCOL[f.k]; c.beginPath(); c.arc(f.x,f.y,4+3*f.err,0,TAU); c.fill(); } c.globalAlpha=1;
+  // target (Hikari star)
+  c.save(); c.translate(H.x,H.y); c.fillStyle='rgba(56,225,255,.28)'; c.beginPath(); c.arc(0,0,30,0,TAU); c.fill(); CH.starPath(c,0,0,17,7,4,clock0()); c.fillStyle='#fff'; c.fill(); c.lineWidth=3; c.strokeStyle='#1b1033'; c.stroke(); c.restore();
+  // best predictor tag
+  c.font='600 18px Prompt, Leelawadee UI, Tahoma, sans-serif'; c.fillStyle=HCOL[bi]; c.fillText('Kage เชื่อสูตร: '+HN[bi],20,34);
+  c.fillStyle='rgba(246,241,255,.6)'; c.font='500 16px Prompt, Leelawadee UI, Tahoma, sans-serif'; c.fillText(H.mode==='mouse'?(H.mouseIn?'ขยับเมาส์ในกรอบนี้':'เอาเมาส์มาวางในกรอบนี้'):'วงกลมกลวง = คำทำนาย  เส้น = ความคลาดเคลื่อนเมื่อตรวจคำตอบ',20,HH-20);
+  // bars
+  const rows=$('hRows').children; for(let k=0;k<5;k++){ rows[k].classList.toggle('top',k===bi); rows[k].querySelector('i').style.transform='scaleX('+H.w[k]+')'; rows[k].querySelector('em').textContent=Math.round(H.w[k]*100)+'%'; }
+}
+const clock0=()=>clock*2;
+</script>
+</body>
+</html>
