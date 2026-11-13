@@ -1,0 +1,12 @@
+{
+  "name": "shadow-sync",
+  "private": true,
+  "description": "SHADOW SYNC - browser boss-duel game with an adaptive opponent",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "build:test": "node tools/build.mjs --test"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^5.10.1"
+  }
+}

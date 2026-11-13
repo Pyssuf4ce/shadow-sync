@@ -31,8 +31,20 @@ Kage-07 เป็น adaptive game AI เขียนเองด้วย JavaS
 
 ## ไฟล์
 
-- `game.html` ตัวเกม (ลูปเกม, AI, HUD, เสียง)
+- `game.src.html` ต้นฉบับของเกม (แก้ที่ไฟล์นี้)
+- `game.html` ตัวที่ใช้งานจริง สร้างจาก `game.src.html` ด้วย `npm run build` (โค้ดถูกห่อและพรางแล้ว **ห้ามแก้ตรง ๆ**) และต้อง commit ไฟล์นี้ด้วยเพราะ Vercel ส่งไฟล์นี้ให้ผู้เล่น
 - `characters.js` วาดและขยับตัวละครด้วย Canvas
-- `index.html` หน้าแนะนำเกม
+- `index.html` หน้าแนะนำเกม (สไลด์ 14 หน้า ฝัง `game.html`)
 - `sheet.html` หน้าทดสอบตัวละคร
-- `DESIGN.md` บันทึกการออกแบบ
+- `tools/build.mjs` สคริปต์สร้าง `game.html` (`npm install` ก่อนครั้งแรก)
+- `DESIGN.md` บันทึกการออกแบบ รวมถึงชั้นป้องกันการโกง
+
+## สร้างและส่งขึ้น Vercel
+
+```bash
+npm install          # ครั้งแรกเท่านั้น
+npm run build        # สร้าง game.html จาก game.src.html
+npm run build:test   # สร้าง game.test.html (ตัวแปรยังเรียกได้ ไว้ทดสอบ ไม่ commit)
+```
+
+หลังแก้ `game.src.html` ให้รัน `npm run build` แล้ว commit ทั้ง `game.src.html` และ `game.html` ก่อน push
