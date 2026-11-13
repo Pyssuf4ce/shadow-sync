@@ -468,8 +468,12 @@ function reset(f,x,y){ f.x=x; f.y=y; f.vx=f.vy=0; f.dashT=0; f.dashCd=0; f.inv=0
 
 /* -------------------------------------------------------------- damage */
 const ATK={snipe:'ชาโดว์ช็อต',fan:'จันทร์เสี้ยว',ring:'บุปผาเงา',slash:'เงาพุ่ง',trap:'SYNC BREAK',echo:'เงาซ้อน'};
-const kSpeed=()=>DIFF[G.diff].speed*(1+.06*(G.round-1))*[1,1,1.1,1.2][Kg.phase];
-const kFire=()=>DIFF[G.diff].fire*(1+.08*(G.round-1))*[1,1,1.15,1.3][Kg.phase];
+/* learning OFF = the plain baseline bot: slow reactions, little dodging, short look-ahead, stiff walking */
+const DUMB={};
+function getD(){ const D=DIFF[G.diff]; if(G.learn) return D;
+  return DUMB[G.diff]||(DUMB[G.diff]=Object.assign({},D,{react:Math.max(D.react*2.5,.45),dodge:Math.min(D.dodge,.3),dirs:8,look:.4,spds:[1],pad:0,readAim:false,lag:false,imminentDash:false,dashTh:1.4,dashRate:2,dashCd:3.2,accel:5,actMove:.35,noise:Math.max(D.noise*2.5,.12),speed:D.speed*.8,dumbWalk:true})); }
+const kSpeed=()=>getD().speed*(1+.06*(G.round-1))*[1,1,1.1,1.2][Kg.phase];
+const kFire=()=>getD().fire*(1+.08*(G.round-1))*[1,1,1.15,1.3][Kg.phase];
 const kBS=()=>[1,1,1.08,1.18][Kg.phase];
 function flare(x,y,size,col){ parts.push({x,y,vx:0,vy:0,life:.22,max:.22,size,col:col||'#fff',t:'flare',rot:rnd(0,1)}); }
 function hurt(f,dmg,fromX,fromY,kind){
@@ -583,7 +587,7 @@ function incoming(k,win){
 function think(k,D){
   const d=hyp(P.x-k.x,P.y-k.y), ph=k.phase;
   k.rangeT-=.14; if(k.rangeT<=0){ k.rangeT=2.4; chooseRange(); }
-  k.orbitT-=.14; if(k.orbitT<=0){ k.orbitDir*=-1; k.orbitT=rnd(.8,2.3); }
+  k.orbitT-=.14; if(k.orbitT<=0){ k.orbitDir*=-1; k.orbitT=D.dumbWalk?rnd(3.5,6.5):rnd(.8,2.3); }
   if((k.x<PB.x0+60||k.x>PB.x1-60||k.y<PB.y0+40||k.y>PB.y1-40) && Math.random()<.35) k.orbitDir*=-1;
   if(k.act||k.recover>0||G.state!=='play'||k.stun>0) return;
   if(ph>=3) k.range=Math.min(k.range,300);              // OVERCLOCK: no more turtling
@@ -607,7 +611,7 @@ function startAct(k,type,D){
   if(type==='trap'){ cutIn('kage','SYNC BREAK',G.learn?'ลายเท้าของเธอ… ฉันจำได้ทั้งหมด':'ลองหลบให้พ้นสิ',0); SND.play('trap'); B.trapUses++; }
   if(type==='echo') SND.play('echo');
 }
-function aimFrom(ox,oy,flight){ const idx=pickPredictor(), pt=predictAll(flight)[idx], D=DIFF[G.diff];
+function aimFrom(ox,oy,flight){ const idx=pickPredictor(), pt=predictAll(flight)[idx], D=getD();
   const ax=pt[0], ay=pt[1]-BODY; return {a:Math.atan2(ay-oy,ax-ox)+gauss()*D.noise*.9,x:ax,y:ay,idx}; }
 function aimAt(k,flight){ const r=aimFrom(k.x,k.y-BODY,flight); k.pick=r.idx; r.d=hyp(r.x-k.x,r.y-(k.y-BODY)); return r; }
 function kShot(mz,ang,sp,dmg,kind,r){ addBullet({x:mz.x,y:mz.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,r:r||7,dmg,owner:'k',life:1.9,kind}); G.stats.kShots++; }
@@ -650,7 +654,7 @@ function execAct(k,D){
   if((ph>=2||D.comboAll)&&a.type!=='trap'&&a.type!=='slash'&&a.type!=='echo'&&!k.combo&&Math.random()<(ph===2&&!D.comboAll?.28:.45)){ k.combo=Math.random()<.5?'snipe':'fan'; k.atkCd=.2; }
 }
 function updateKage(dt){
-  const k=Kg, D=DIFF[G.diff]; k.speed=kSpeed();
+  const k=Kg, D=getD(); k.speed=kSpeed();
   k.flash=Math.max(0,k.flash-dt); k.inv=Math.max(0,k.inv-dt); k.dashCd-=dt; k.atkCd-=dt; k.slashCd-=dt; k.trapCd-=dt; k.ringCd-=dt; k.echoCd-=dt;
   if(k.phase>=2&&Math.random()<dt*(k.phase>=3?46:26)) parts.push({x:k.x+rnd(-14,14),y:k.y-rnd(0,50),vx:rnd(-20,20),vy:rnd(-130,-60),life:.6,max:.6,size:2.6,col:k.phase>=3?'#ffd65a':'#ff5c7c',t:'spark'});
   if(k.double>0){ k.double-=dt; if(k.double<=0&&k.volley>0){ k.volley--; const sp=640*kBS(), aim=aimAt(k,hyp(P.x-k.x,P.y-k.y)/sp), mz=CH.muzzle('kage',k.x,k.y,SC,aim.a);
